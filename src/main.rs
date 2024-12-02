@@ -1,5 +1,7 @@
+use core::num;
 use std::fs::File;
 use std::io::{self,BufRead};
+
 //use std::path::Path;
 
 fn main() -> io::Result<()> {
@@ -10,63 +12,34 @@ fn main() -> io::Result<()> {
 
     let mut safe = 0;
 
+    let mut unsafe_logs:Vec<Vec<i32>>  = Vec::new();
+
     for line in reader.lines(){
         let line = line?;
         let numbers: Vec<i32> = line
             .split_whitespace()
             .filter_map(|s| s.parse::<i32>().ok())
             .collect();
-
-        let mut prev = 0;
-        prev = numbers[0];
         let mut is_safe = true;
-        let mut incr = true;
-        let mut unsafe_count = 0;
-        for i in 1..numbers.len(){
-            let num = numbers[i];
-            
-            if i == 1 || unsafe_count == 1{
-                incr = prev < num;
-            }
 
-            if (incr && prev > num) || (incr == false && prev < num){
-                
-                is_safe = false;
-                unsafe_count += 1;
-                //prev = num;
-                if unsafe_count > 1{
-                    break;
-                }
-                continue;
-            }
+        is_safe = process_line(&numbers);
 
-            if prev == num{
-                is_safe = false;
-                unsafe_count += 1;
-                //prev = num;     
-                if unsafe_count > 1{
-                    break;
-                }
-                continue;
-            }
-            let dis:i32 = (prev - num).abs();
-            if dis >= 1 && dis <= 3{
-                prev = num;
-            }else{
-                is_safe = false;
-                unsafe_count += 1;
-                //prev = num;
-                if unsafe_count > 1{
-                    break;
-                }
-                continue;
-            }
-        }
-        if unsafe_count == 0{
-            is_safe = true;
-        }
         if is_safe{
             safe += 1;
+        }else{
+            unsafe_logs.push(numbers);
+        }
+    }
+
+    for number in unsafe_logs{
+        for i in 0..number.len(){
+            let mut number_removed = number.clone();
+            number_removed.remove(i);
+
+            if process_line(&number_removed){
+                safe += 1;
+                break;
+            }
         }
     }
 
@@ -75,3 +48,33 @@ fn main() -> io::Result<()> {
 
     Ok(())
 } 
+
+fn is_sorted_ascending<T: Ord>(vec: &[T]) -> bool{
+    vec.windows(2).all(|w| w[0] <= w[1])
+}
+
+fn is_sorted_descending<T: Ord>(vec: &[T]) -> bool{
+    vec.windows(2).all(|w| w[0] >= w[1])
+}
+
+fn process_line(numbers:&Vec<i32>) -> bool
+{
+        // let mut prev = 0;
+        let mut is_safe = true;
+
+        let mut incr = is_sorted_ascending(&numbers);
+        
+        let mut unsafe_count = 0;
+
+        numbers.windows(2).all(|w|{
+            let prev = w[0];
+            let num = w[1];
+            let dis = (prev-num).abs();
+
+            if (incr && prev > num) || (incr == false && prev < num) || prev == num || dis < 1 || dis > 3{
+                return  false;
+            }
+            true
+        })
+        
+}
