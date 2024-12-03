@@ -13,10 +13,19 @@ fn main() -> io::Result<()> {
     for line in reader.lines(){
         let line = line?;
         
-        let res = extract_mul_expressions(&line);
+        for do_sub in line.split_terminator("do()"){
+            let parts: Vec<&str> = do_sub.split("don't()").collect();
+            if let Some(first_part) = parts.get(0) {
+                println!("{}",first_part);
+                let res = extract_mul_expressions(first_part);
+                
+                for (num1 , num2) in res{
+                    sum += num1 * num2;
+                }
+            
+            }
 
-        for (num1 , num2) in res{
-            sum += num1 * num2;
+
         }
     }
 
