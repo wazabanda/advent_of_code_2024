@@ -73,15 +73,15 @@ fn run_operation(left:i64,right:i64,others:&[i64],check: i64) -> (i64,i64,i64){
         
 
 
-        if n_sum.0 == check || n_sum.1 == check{
+        if n_sum.0 == check || n_sum.1 == check || n_sum.2 == check{
             return n_sum;
         }
-
-        if n_prod.0 == check || n_prod.1 == check{
+ 
+        if n_prod.0 == check || n_prod.1 == check || n_prod.2 == check{
             return n_prod;
         }
     
-        if n_conc.0 == check || n_conc.1 == check{
+        if n_conc.0 == check || n_conc.1 == check || n_conc.2 == check{
             return n_conc;
         }
     }
