@@ -1,91 +1,135 @@
 use std::fs::File;
+use std::collections::HashMap;
 use std::io::{self,BufRead};
+
+
+
+#[derive(Clone)]
+struct Point{
+    row: usize,
+    col: usize,
+    value: char,
+}
+
+
+#[derive(Clone)]
+struct Line{
+    p1:Point,
+    p2:Point,
+    slope:f64,
+    on_same_col:bool,
+    on_line:Vec<Point>
+}
+
+impl std::fmt::Debug for Point {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.value) // Custom format for printing
+    }
+}
+
 
 fn main() -> io::Result<()> {
     
-    let path = "src/inputs/day7.txt";
+    let path = "src/inputs/day8_test.txt";
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
+    let mut map : Vec<Vec<char>> = Vec::new();
     let mut sum = 0;
-    for (row_, line) in reader.lines().into_iter().enumerate() {
+    let mut mappings:HashMap<char,Vec<Point>> = HashMap::new();
+    for (row, line) in reader.lines().into_iter().enumerate() {
         let line = line?;
-        let sections: Vec<&str> = line.split(":").collect();
-        let numbers: Vec<i64> = sections[1]
-            .split_whitespace()
-            .filter_map(|s| s.parse::<i64>().ok())
-            .collect();
-        let mut res = 0; 
-        
-        match sections[0].parse::<i64>(){
-            Ok(r) => res = r,
-            Err(_) => {
-                println!("faild to parse: {}",sections[0]);
-                break;
-            }
-        }
-        
-        let left = numbers[0];
-        let right = numbers[1];
+        let mut sections: Vec<char> = Vec::new();
 
-        let slice = &numbers[2..numbers.len()];
-
-        let ans = run_operation(left,right,slice,res);
-
-        
-        if ans.0 == res{
-            sum += ans.0;
-            //println!("answers are: {} {} {} right one is {}",ans.0,ans.1,ans.2,res);
-        }if ans.1 == res{
-            sum += ans.1;
-            //println!("answers are: {} {} {} right one is {}",ans.0,ans.1,ans.2,res);
-        }else if ans.2 == res{
-            sum += ans.2;
-            //println!("answers are: {} {} {} right one is {}",ans.0,ans.1,ans.2,res);
+        for (col,ch) in line.chars().enumerate(){
+            let point = Point{row,col,value:ch};
+            sections.push(ch);
+            mappings.entry(ch).or_insert_with(Vec::new).push(point);
         }
-        else {
-            //println!("faild to clear case for: {}", line);
-        }
+
+        map.push(sections)
+    
     }
 
-    println!("part 1: {}", sum);
+    println!("{:?}",mappings);
+
+    for (key,value) in mappings.into_iter()
+    {
+        if key == '.'{continue};
+
+        for (index,point) in value.iter().enumerate(){
+            //println!("{} {:?}",key,point);
+            for i in index+1..value.len(){
+                let mut slope = 0.0;
+                let mut on_same_col = false;
+                match get_slope(&point,&value[i]){
+                    Some(s) => slope = s,
+                    None => on_same_col = true,
+                }
+                let line = Line{p1:point.clone(),p2:value[i].clone(),slope,on_same_col,on_line:Vec::new()};
+                println!("point {} {}",point.col,point.row);
+                println!("{:?}",generate_points(&point,&value[i],value.len()));
+
+            }
+        }
+    }
     
+
     Ok(())
 }
 
-fn run_operation(left:i64,right:i64,others:&[i64],check: i64) -> (i64,i64,i64){
-    
-    //println!("cheking {}  for {} and {} with {:?}",check,left,right,others);
-    let sum = left + right;
-    let prod = left * right;
-    
-    let conc = format!("{}{}",left.to_string(),right.to_string()).parse::<i64>().unwrap_or_else(|_| {
-            panic!("faild to concat")
-        }
-    );
 
-    if others.len() > 0 && check > 0{
-        let next = others[0];
-        let others = &others[1..others.len()];
-        
-        let n_sum = run_operation(sum,next,&others,check);
-        let n_prod = run_operation(prod,next,&others,check);
-        let n_conc = run_operation(conc,next,&others,check);
-        
-
-
-        if n_sum.0 == check || n_sum.1 == check || n_sum.2 == check{
-            return n_sum;
-        }
- 
-        if n_prod.0 == check || n_prod.1 == check || n_prod.2 == check{
-            return n_prod;
-        }
+fn get_slope(p1:&Point,p2:&Point) -> Option<f64>{
     
-        if n_conc.0 == check || n_conc.1 == check || n_conc.2 == check{
-            return n_conc;
-        }
+    if p1.col == p2.col{
+       return None;
     }
+    Some((p2.row - p1.row) as f64 / (p2.col - p1.col) as f64)
 
-    (sum,prod,conc)
 }
 
+fn gcd(a: i32, b: i32) -> i32 {
+    if b == 0 {
+        a.abs()
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn generate_points(p1:&Point, p2: &Point, steps: usize) -> Vec<(usize, usize)> {
+    let mut points = Vec::new();
+    let x1 =p1.col;
+    let y1 =p1.row;
+    let x2 = p2.col;
+    let y2 = p2.row;
+
+    let dy = y2 - y1;
+    let dx = x2 - x1;
+
+    let divisor = gcd(dy.try_into().unwrap(), dx) as usize;
+    let step_y = dy / divisor;
+    let step_x = dx / divisor;
+
+    let mut current_x = x1;
+    let mut current_y = y1;
+
+    points.push((x1, y1));
+
+    for _ in 0..steps {
+        current_x += step_x;
+        current_y += step_y;
+        points.push((current_x, current_y));
+    }
+
+    current_x = x1;
+    current_y = y1;
+    for _ in 0..steps {
+        current_x -= step_x;
+        current_y -= step_y;
+        points.push((current_x, current_y));
+    }
+
+    points.sort();
+    points.dedup();
+
+    points
+}
