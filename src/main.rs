@@ -1,114 +1,87 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufRead};
 
 
+fn insert_or_increment(map: &mut HashMap<u64, u64>, key: u64) {
+        // Use entry to either insert or increment
+        let counter = map.entry(key).or_insert(0);
+        *counter += 1; // Increment the value by 1
+}
+
+
+fn split_number(num: u64) -> (u64, u64) {
+    let num_str = num.to_string();
+    let mid = (num_str.len() + 1) / 2; 
+
+    let (first_half, second_half) = num_str.split_at(mid);
+
+    let first = first_half.parse::<u64>().unwrap_or(0);
+    let second = second_half.parse::<u64>().unwrap_or(0);
+
+    (first, second)
+}
 
 fn main() -> io::Result<()> {
-    let path = "src/inputs/day10.txt";
+    let path = "src/inputs/day11.txt";
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
-    let mut heads: Vec<(usize,usize)> = Vec::new();
-    let mut map: Vec<Vec<i32>> = Vec::new();
-    // let mut free_space_map:HashMap::<u32,Vec<usize>> = HashMap::new();
-    // let mut used_space_map:HashMap::<u32,Vec<usize>> = HashMap::new();
+    
+    let mut memory_map:HashMap<u64,u64> = HashMap::new();
 
+    let mut numbers:Vec<u64> = Vec::new();
     for (row, line) in reader.lines().into_iter().enumerate() {
-        let line = line?;
-        let mut numbers:Vec<i32> = Vec::new();
-        for (col, ch) in line.chars().enumerate() {
-            match ch.to_digit(10) {
-                Some(digit) => {
-                    numbers.push(digit as i32);
-                    if digit == 0{
-                        heads.push((row,col));
-                    }
+        numbers = line?
+            .split_whitespace()
+            .filter_map(|s| s.parse::<u64>().ok())
+            .collect();
+        
+        println!("{:?}",numbers);
+    
+    }
+    for number in numbers{
+        insert_or_increment(&mut memory_map, number);
+    }
+
+    // println!("{:?}",&memory_map);
+
+    for i in 0..75{
+
+        let mut temp:HashMap<u64,u64> = HashMap::new();
+        for (k,v) in memory_map.clone(){
+            if k == 0{
+                let counter = temp.entry(1).or_insert(0);
+                *counter += v;
+
+            }else if k == 1{
+                let counter = temp.entry(2024).or_insert(0);
+                *counter += v;
+            }else{
+                let s_num = k.to_string();
+                if s_num.len() % 2 != 0{
+                    let counter = temp.entry(k * 2024).or_insert(0);
+                    *counter += v;
+                }else{
+                   let (first,second) = split_number(k);
+
+                    let counter = temp.entry(first).or_insert(0);
+                    *counter += v;
+                    let counter = temp.entry(second).or_insert(0);
+                    *counter += v;
                 }
-                None => println!("Cant convert {} to digit", ch),
             }
-        }
-        map.push(numbers);
-    }
-    let mut score = 0;
-    let mut score2 = 0;
-    for head in heads{
-        println!("head : {:?}",head);
-        let mut seen: HashSet<(usize,usize)> = HashSet::new();
-        let s = find_trail(head, head, &map, &mut seen);
-        score += s.0;
-        score2 += s.1;
-        println!("score {:?}",s);
-        // break;
+
+            memory_map = temp.clone();
+        }    
+    }    
+
+    let mut sum = 0;
+    for (k,v) in memory_map{
+        sum += v;
     }
 
-    println!("part 1: {}",score);
-    println!("part 2: {}",score2);
-
+    println!("part 1: {}",sum);
     Ok(())
 }
 
 
-// Points are (row,col)
-fn find_trail(prev:(usize,usize),current:(usize,usize),map:&Vec<Vec<i32>>,seen: &mut HashSet<(usize,usize)>) -> (i32,i32){
-
-    let mut sum =0;
-    let mut sum2 = 0;
-    let val = map[current.0][current.1];
-    if val == 9 && !seen.contains(&current){
-
-        seen.insert(current);
-        return (1,1);
-    }
-    if val == 9{
-        return (0,1);
-    }
-    // println!("{:?}",seen);
-    if current.0 > 0{
-        let p = (current.0-1,current.1);
-        let val2 = map[p.0][p.1]; 
-
-        if val2 - val == 1 && p != prev {
-            let s = find_trail(current, p, map,seen);
-            sum += s.0;
-            sum2 += s.1;
-        }
-    }
-
-    if current.0 < map.len() - 1 {
-        let p: (usize, usize) = (current.0+1,current.1);
-        let val2 = map[p.0][p.1];
-
-        if val2 - val == 1 && p != prev{
-            let s = find_trail(current, p, map,seen);
-            sum += s.0;
-            sum2 += s.1;
-        }
-        
-    }
-
-    if current.1 > 0{
-        let p = (current.0,current.1-1);
-        let val2 = map[p.0][p.1]; 
-        
-        if val2 - val == 1 && p != prev{
-            let s = find_trail(current, p, map,seen);
-            sum += s.0;
-            sum2 += s.1;
-        }
-    }
-
-    if current.1 < map[0].len() - 1{
-        let p = (current.0,current.1+1);
-        let val2 = map[p.0][p.1]; 
-        
-        if val2 - val == 1 && p != prev{
-            let s = find_trail(current, p, map,seen);
-            sum += s.0;
-            sum2 += s.1;
-        }
-        
-    }
-
-    (sum,sum2)
-
-}
